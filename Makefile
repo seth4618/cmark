@@ -21,7 +21,7 @@ INSTALL_PREFIX?=/usr/local
 
 .PHONY: all cmake_build spec leakcheck clean fuzztest dingus upload test update-site upload-site debug ubsan asan mingw archive bench astyle update-spec afl tags
 
-all: cmake_build man/man3/cmark.3
+all: cmake_build man/man3/cmark.3 man/man1/cmark.1
 
 $(CMARK): cmake_build
 
@@ -85,6 +85,9 @@ mingw:
 	make && make install
 
 man/man3/cmark.3: src/cmark.h | $(CMARK)
+	python man/make_man_page.py $< > $@ \
+
+man/man1/cmark.1: src/cmark.h | $(CMARK)
 	python man/make_man_page.py $< > $@ \
 
 archive:
