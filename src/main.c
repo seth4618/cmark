@@ -183,6 +183,7 @@ int main(int argc, char *argv[])
     if (strcmp(argv[i], "--version") == 0) {
       printf("cmark %s", CMARK_VERSION_STRING);
       printf(" - CommonMark converter\n(C) 2014, 2015 John MacFarlane\n");
+      printf(" - extended (C) 2016 Seth Goldstein @ CMU\n");
       exit(0);
     } else if (strcmp(argv[i], "--sourcepos") == 0) {
       options |= CMARK_OPT_SOURCEPOS;
