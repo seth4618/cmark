@@ -26,6 +26,7 @@ int _scan_entity(const unsigned char *p);
 int _scan_toc_inline(const unsigned char *p);
 int _scan_question_qwidget(const unsigned char *p);
 int _scan_solution(const unsigned char *p);
+int _scan_solutionClear(const unsigned char *p);
 int _scan_table(const unsigned char *p);
 int _scan_attribute(const unsigned char *p);
 
@@ -47,6 +48,7 @@ int _scan_attribute(const unsigned char *p);
 #define scan_toc(c, n) _scan_at(&_scan_toc_inline, c, n)
 #define scan_question_qwidget(c, n) _scan_at(&_scan_question_qwidget, c, n)
 #define scan_solution(c, n) _scan_at(&_scan_solution, c, n)
+#define scan_solutionClear(c, n) _scan_at(&_scan_solutionClear, c, n)
 #define scan_table(c, n) _scan_at(&_scan_table, c, n)
 #define scan_attribute(c, n) _scan_at(&_scan_attribute, c, n)
 

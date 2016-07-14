@@ -190,6 +190,19 @@ _scan_solution(const unsigned char *p)
 */
 }
 
+//Try to scan for the pattern {solution:clear}
+int 
+_scan_solutionClear(const unsigned char *p)
+{
+    const unsigned char *marker = NULL;
+    const unsigned char *start = p;
+
+/*!re2c
+	'{' '--solution-clear--' '}'	    { return (p-start); }
+        .? { return 0; }
+*/
+}
+
 // Try to match an HTML tag after first <, returning num of chars matched.
 int _scan_html_tag(const unsigned char *p)
 {
