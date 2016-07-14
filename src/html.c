@@ -543,6 +543,10 @@ S_render_node(cmark_node *node, cmark_event_type ev_type,
 	outExamBlock(html, node, entering);
 	break;
 
+    case CMARK_NODE_CLEAR_SOLUTION:
+	clearSolutionBlock(html, node, entering);
+	break;
+
     case CMARK_NODE_SOLUTION:
 	markSolutionBlock(html, node, entering);
 	break;

@@ -50,6 +50,7 @@ char *cmark_markdown_to_html(const char *text, int len, int options);
     /* New Node */
     CMARK_NODE_EXAM,	/* new node which holds exam blocks */
     CMARK_NODE_SOLUTION,	/* new node which holds solution blocks */
+    CMARK_NODE_CLEAR_SOLUTION,	/* new node which holds solution blocks */
     CMARK_NODE_TABLE,
     CMARK_NODE_ROW,
     CMARK_NODE_CELL,
@@ -602,6 +603,7 @@ extern const char cmark_version_string[];
 #define NODE_ANSWER		  CMARK_NODE_ANSWER
 #define NODE_BLANK		  CMARK_NODE_BLANK
 #define NODE_SOLUTION		  CMARK_NODE_SOLUTION
+#define NODE_CLEAR_SOLUTION	  CMARK_NODE_CLEAR_SOLUTION
 #define NODE_TABLE		  CMARK_NODE_TABLE
 #define NODE_ROW		  CMARK_NODE_ROW
 #define NODE_CELL		  CMARK_NODE_CELL

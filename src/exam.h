@@ -38,6 +38,7 @@ void format_exam_widget(cmark_strbuf *html, cmark_node* qtype, cmark_node* node)
 char* cmark_get_exam_output(int x);
 int cmark_write_exam_output(FILE* out);
 void markSolutionBlock(cmark_strbuf *outputBuffer, cmark_node* node, int entering);
+void clearSolutionBlock(cmark_strbuf *outputBuffer, cmark_node* node, int entering);
 void format_blank_input(cmark_strbuf *html, cmark_node* node, int groupnum, int ansnum);
 void format_text_wiget(cmark_strbuf *html, int width, int groupnum, int ansnum);
 cmark_node* get_enclosing_exam(cmark_node* node);

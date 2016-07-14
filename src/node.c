@@ -258,6 +258,8 @@ cmark_node_get_type_string(cmark_node *node)
 	return "exam";
     case CMARK_NODE_SOLUTION:
 	return "solution";
+    case CMARK_NODE_CLEAR_SOLUTION:
+	return "solution-clear";
     case CMARK_NODE_TABLE:
 	return "table";
     case CMARK_NODE_ROW:

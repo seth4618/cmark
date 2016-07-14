@@ -92,7 +92,7 @@ print_tree(cmark_node* node, char* prompt)
 		fprintf(stderr, " [%s]", cmark_chunk_to_cstr(&cur->as.code.literal));
 	    } else if (cur->type == NODE_SOLUTION) {
 		fprintf(stderr, " %d[%s]", cur->as.solution.stanza, cmark_chunk_to_cstr(&cur->as.solution.literal));
-	    }
+	    } 
 	}
 	fprintf(stderr, "\n");
     }
@@ -341,16 +341,16 @@ finalize(cmark_parser *parser, cmark_node* b)
                (b->type == NODE_HEADER && b->as.header.setext)) {
         b->end_line = parser->line_number;
         b->end_column = parser->curline->size -
-        (parser->curline->ptr[parser->curline->size - 1] == '\n' ?
-         1 : 0);
+	    (parser->curline->ptr[parser->curline->size - 1] == '\n' ?
+	     1 : 0);
     } else {
         b->end_line = parser->line_number - 1;
         b->end_column = parser->last_line_length;
     }
     
     switch (b->type) {
-        case NODE_PARAGRAPH:
-            if(cmark_strbuf_at(&b->string_content,0)=='[')
+    case NODE_PARAGRAPH:
+	if(cmark_strbuf_at(&b->string_content,0)=='[')
             {
                 while (cmark_strbuf_at(&b->string_content, 0) == '[' &&
                        (pos = cmark_parse_reference_inline(&b->string_content, parser->refmap))) {
@@ -361,84 +361,84 @@ finalize(cmark_parser *parser, cmark_node* b)
                     cmark_node_free(b);
                 }
             }
-            else if(cmark_strbuf_at(&b->string_content,0)=='<' && cmark_strbuf_at(&b->string_content,1)=='<')
+	else if(cmark_strbuf_at(&b->string_content,0)=='<' && cmark_strbuf_at(&b->string_content,1)=='<')
             {
                 while(cmark_strbuf_at(&b->string_content,0)=='<' && cmark_strbuf_at(&b->string_content,1)=='<' && (pos = cmark_parse_include_inline(&b->string_content,parser)))
-                {
-                    cmark_strbuf_drop(&b->string_content,pos);
-                }
+		    {
+			cmark_strbuf_drop(&b->string_content,pos);
+		    }
                 if(is_blank(&b->string_content,0))
-                {
-                    cmark_node_free(b);
-                }
+		    {
+			cmark_node_free(b);
+		    }
             }
-            break;
+	break;
             
     case NODE_SOLUTION:
-                remove_trailing_blank_lines(&b->string_content);
-                //cmark_strbuf_putc(&b->string_content, '\n');
-		b->as.solution.literal = cmark_chunk_buf_detach(&b->string_content);
-		break;
+	remove_trailing_blank_lines(&b->string_content);
+	//cmark_strbuf_putc(&b->string_content, '\n');
+	b->as.solution.literal = cmark_chunk_buf_detach(&b->string_content);
+	break;
 
-        case NODE_CODE_BLOCK:
-            if (!b->as.code.fenced) { // indented code
-                remove_trailing_blank_lines(&b->string_content);
-                cmark_strbuf_putc(&b->string_content, '\n');
-            } else {
+    case NODE_CODE_BLOCK:
+	if (!b->as.code.fenced) { // indented code
+	    remove_trailing_blank_lines(&b->string_content);
+	    cmark_strbuf_putc(&b->string_content, '\n');
+	} else {
                 
-                // first line of contents becomes info
-                firstlinelen = cmark_strbuf_strchr(&b->string_content, '\n', 0);
+	    // first line of contents becomes info
+	    firstlinelen = cmark_strbuf_strchr(&b->string_content, '\n', 0);
                 
-                cmark_strbuf tmp = GH_BUF_INIT;
-                houdini_unescape_html_f(
-                                        &tmp,
-                                        b->string_content.ptr,
-                                        firstlinelen
-                                        );
-                cmark_strbuf_trim(&tmp);
-                cmark_strbuf_unescape(&tmp);
-                b->as.code.info = cmark_chunk_buf_detach(&tmp);
+	    cmark_strbuf tmp = GH_BUF_INIT;
+	    houdini_unescape_html_f(
+				    &tmp,
+				    b->string_content.ptr,
+				    firstlinelen
+				    );
+	    cmark_strbuf_trim(&tmp);
+	    cmark_strbuf_unescape(&tmp);
+	    b->as.code.info = cmark_chunk_buf_detach(&tmp);
                 
-                cmark_strbuf_drop(&b->string_content, firstlinelen + 1);
-            }
-            b->as.code.literal = cmark_chunk_buf_detach(&b->string_content);
-            break;
+	    cmark_strbuf_drop(&b->string_content, firstlinelen + 1);
+	}
+	b->as.code.literal = cmark_chunk_buf_detach(&b->string_content);
+	break;
             
-        case NODE_HTML:
-            b->as.literal = cmark_chunk_buf_detach(&b->string_content);
-            break;
+    case NODE_HTML:
+	b->as.literal = cmark_chunk_buf_detach(&b->string_content);
+	break;
             
-        case NODE_LIST: // determine tight/loose status
-            b->as.list.tight = true; // tight by default
-            item = b->first_child;
+    case NODE_LIST: // determine tight/loose status
+	b->as.list.tight = true; // tight by default
+	item = b->first_child;
             
-            while (item) {
-                // check for non-final non-empty list item ending with blank line:
-                if (item->last_line_blank && item->next) {
-                    b->as.list.tight = false;
-                    break;
-                }
-                // recurse into children of list item, to see if there are
-                // spaces between them:
-                subitem = item->first_child;
-                while (subitem) {
-                    if (ends_with_blank_line(subitem) &&
-                        (item->next || subitem->next)) {
-                        b->as.list.tight = false;
-                        break;
-                    }
-                    subitem = subitem->next;
-                }
-                if (!(b->as.list.tight)) {
-                    break;
-                }
-                item = item->next;
-            }
+	while (item) {
+	    // check for non-final non-empty list item ending with blank line:
+	    if (item->last_line_blank && item->next) {
+		b->as.list.tight = false;
+		break;
+	    }
+	    // recurse into children of list item, to see if there are
+	    // spaces between them:
+	    subitem = item->first_child;
+	    while (subitem) {
+		if (ends_with_blank_line(subitem) &&
+		    (item->next || subitem->next)) {
+		    b->as.list.tight = false;
+		    break;
+		}
+		subitem = subitem->next;
+	    }
+	    if (!(b->as.list.tight)) {
+		break;
+	    }
+	    item = item->next;
+	}
             
-            break;
+	break;
             
-        default:
-            break;
+    default:
+	break;
     }
     return parent;
 }
@@ -1532,7 +1532,13 @@ S_process_line(cmark_parser *parser, const unsigned char *buffer, size_t bytes)
             container->as.header.level = level;
             container->as.header.setext = false;
             
-        } else if ((matched = scan_open_code_fence(&input, first_nonspace))) {
+        } else if ((matched = scan_solutionClear(&input, first_nonspace))) {
+	    // we have matched a solution clear block, insert into tree, nothing else for now
+	    if (cmark_verbose) fprintf(stderr, "Adding solution clear inside (%s)\n", cmark_node_get_type_string(container));
+	    container = add_child(parser, container, NODE_CLEAR_SOLUTION, first_nonspace);
+	    container->as.solution.stanza = -1; /* indicate clear */
+	    offset = first_nonspace+matched;
+	} else if ((matched = scan_open_code_fence(&input, first_nonspace))) {
             
             container = add_child(parser, container, NODE_CODE_BLOCK, first_nonspace + 1);
             container->as.code.fenced = true;
