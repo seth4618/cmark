@@ -53,6 +53,20 @@ warning(cmark_node* node, const char* fmt, ...)
     }
 }
 
+// each time we hit a solution clear we create a new set of stanza's.  Then at the end we generate all combinations foreach set of clears.
+typedef struct {
+    int numOutputs;
+    cmark_strbuf** outputs;
+    int* outsUsed;
+    char** cleanOutputs;
+    int count;
+} StanzaSet;
+#define MaxSolutionClears 10
+static int numSolutionClears = 0;
+static StanzaSet solutionClearList[MaxSolutionClears];
+
+
+// between each clearlist this tracks the outputs for each stanza
 static int numExamOutputs = 0;
 static cmark_strbuf** examOutputs = NULL;
 static int* examOutUsed = NULL;
@@ -218,6 +232,30 @@ getExamOutputPtr(int stanzaNumber)
     return examOutputs[stanzaNumber];
 }
 
+// whatever we have gotten so far is to be combined with what comes next in an all pairs mode.
+// so if we have 3 solution blocks before a clear and 2 after, we will generate 6 solution blocks.
+void 
+clearSolutionBlock(cmark_strbuf *outputBuffer, cmark_node* node, int entering)
+{
+    if (!entering) return;
+
+    if (outputBuffer) cmark_strbuf_puts(outputBuffer, "\n<!-- solution clear -->\n");
+
+    if (numSolutionClears >= (MaxSolutionClears-2)) {
+	fprintf(stderr, "Too many solution clears.\n");
+	exit(-1);
+    }
+    // save current set of buffers and start over
+    solutionClearList[numSolutionClears].numOutputs = numExamOutputs;
+    solutionClearList[numSolutionClears].outputs = examOutputs;
+    solutionClearList[numSolutionClears].outsUsed = examOutUsed;
+    numSolutionClears++;
+
+    examOutputs = NULL;
+    examOutUsed = NULL;
+    numExamOutputs = 0;
+}
+
 void
 markSolutionBlock(cmark_strbuf *outputBuffer, cmark_node* node, int entering)
 {
@@ -228,7 +266,7 @@ markSolutionBlock(cmark_strbuf *outputBuffer, cmark_node* node, int entering)
     cmark_strbuf* solutionBuffer = outputBuffer;
     if (useExamOutput != 0) {
 	int stanzaNumber = node->as.solution.stanza;
-	solutionBuffer = getExamOutputPtr(stanzaNumber);
+	solutionBuffer = getExamOutputPtr(stanzaNumber); 
     }
     int len = node->as.solution.literal.len;
     if (len < 0) len = strlen((char*)node->as.solution.literal.data);
@@ -328,6 +366,7 @@ format_exam_widget(cmark_strbuf *html, cmark_node* qtype, cmark_node* node)
 }
 
 static int numberOfFillIns = 0;
+static cmark_strbuf* questionDescriptorBuffer;
 
 static void 
 outQinfo(cmark_strbuf* solutionBuffer, const char* string)
@@ -342,7 +381,8 @@ void
 create_exam_output_buffer(cmark_node* root)
 {
     useExamOutput = 1;
-    cmark_strbuf* solutionBuffer = getExamOutputPtr(0);
+    cmark_strbuf* solutionBuffer = (cmark_strbuf*)malloc(sizeof(cmark_strbuf));
+    cmark_strbuf_init(solutionBuffer, 256);
     cmark_iter *iter = cmark_iter_new(root);
 
     cmark_node* group = NULL;
@@ -413,52 +453,118 @@ create_exam_output_buffer(cmark_node* root)
     cmark_iter_free(iter);
     cmark_strbuf_putc(solutionBuffer, '\n');
     fprintf(stderr, "There are %d things to do for this question\n", numberOfFillIns);
+    questionDescriptorBuffer = solutionBuffer;
+}
+
+static int
+cntLines(char* buffer)
+{
+    int nl = 1;
+    char* p = buffer;
+    while (*p++) if (*p == '\n') nl++;
+    return nl;
+}
+
+static char*
+getCleanBuffer(cmark_strbuf* buffer)
+{
+    char* result = (char *)cmark_strbuf_detach(buffer);
+    char* clean = result;
+    while (*clean) {
+	if ((*clean == ' ')||(*clean == '\t')||(*clean == '\n')) {
+	    clean++;
+	    continue;
+	}
+	break;
+    }
+    char* p = clean+strlen(clean)-1;
+    while (p > clean) {
+	if ((*p == ' ')||(*p == '\t')||(*p == '\n')) {
+	    p--;
+	    continue;
+	}
+	break;
+    }
+    *(p+1) = 0;
+    return clean;
+}
+
+static void
+outCombinedSolution(FILE* out, int* selection, int level)
+{
+    if (level == numSolutionClears) {
+	for (int i=0; i<numSolutionClears; i++) 
+	    fprintf(out, "%s\n", solutionClearList[i].cleanOutputs[selection[i]]);
+	fprintf(out, "\n");
+	return;
+    }
+    for (int i=0; i<solutionClearList[level].count; i++) {
+	selection[level] = i;
+	outCombinedSolution(out, selection, level+1);
+    }
 }
 
 int
 cmark_write_exam_output(FILE* out)
 {
+    // write out descriptor
+    fprintf(out, "%s\n", (char *)cmark_strbuf_detach(questionDescriptorBuffer));
+    
+    // lets clean up each of the stanzaSets, check that each set of
+    // stanzas has same line count.  Then, output by doing a full
+    // cross product.
+    clearSolutionBlock(NULL, NULL, 1);
+
     int mismatch = 0;
-    for (int i=0; i<numExamOutputs; i++) {
-	if (examOutUsed[i] != 0) {
-	    char* result = (char *)cmark_strbuf_detach(examOutputs[i]);
-	    char* clean = result;
-	    while (*clean) {
-		if ((*clean == ' ')||(*clean == '\t')||(*clean == '\n')) {
-		    clean++;
-		    continue;
-		}
-		break;
+    for (int i=0; i<numSolutionClears; i++) {
+	StanzaSet* set = &(solutionClearList[i]);
+	// count number of stanzas in this block of solutions
+	int cnt = 0;
+	for (int j=0; j<set->numOutputs; j++) {
+	    if (set->outsUsed[j] == 1) cnt++;
+	}
+	set->cleanOutputs = calloc(cnt, sizeof(char*));
+	set->count = cnt;
+	// now convert buffers into clean strings
+	cnt = 0;
+	for (int j=0; j<set->numOutputs; j++) {
+	    if (set->outsUsed[j] == 1) 
+		set->cleanOutputs[cnt++] = getCleanBuffer(set->outputs[j]);
+	}
+	// ok, now we have cnt strings in cleanOutputs.  Lets make sure all have same count
+	int ansCount = cntLines(set->cleanOutputs[0]);
+	for (int k=0; k<cnt; k++) {
+	    if (ansCount != cntLines(set->cleanOutputs[k])) {
+		fprintf(stderr, 
+			"In the %dth out of %d stanzasets there was a mismatch with %d answers\n", 
+			k, cnt, cntLines(set->cleanOutputs[k]));
+		mismatch++;
 	    }
-	    char* p = clean+strlen(clean)-1;
-	    while (p > clean) {
-		if ((*p == ' ')||(*p == '\t')||(*p == '\n')) {
-		    p--;
-		    continue;
-		}
-		break;
-	    }
-	    *(p+1) = 0;
-	    if (i > 0) {
-		// lets check # of lines with entries expected
-		int nl = 1;
-		char* p = clean;
-		while (*p++) if (*p == '\n') nl++;
-		if (nl != numberOfFillIns) {
-		    warning(NULL, "# of lines for solution block %d is %d, expected %d\n", i, nl, numberOfFillIns);
-		    mismatch++;
-		}
-	    }
-	    fprintf(out, "%s\n\n", clean);
-	    free(result);
 	}
     }
-    if (mismatch) {
+    if (mismatch != 0) {
 	fprintf(stderr, "Please fix solution blocks\n");
 	return -1;
     }
+    // now that we have clean strings, lets make sure the total for
+    // all sets equals number of questions.
+    int totalAnswers = 0;
+    for (int i=0; i<numSolutionClears; i++) {
+	StanzaSet* set = &(solutionClearList[i]);
+	totalAnswers += cntLines(set->cleanOutputs[0]);
+    }
+    if (totalAnswers != numberOfFillIns) {
+	fprintf(stderr, "# of lines for all solution blocks is %d, but expected %d\n", totalAnswers, numberOfFillIns);
+	exit(-1);
+    }
+
+    // ok, we have a set of good clear strings.  Combine all possible ways
+    int* selection = calloc(numSolutionClears, sizeof(int));
+    outCombinedSolution(out, selection, 0);
+    if (mismatch) return 1;
     return 0;
 }
+
 
 char*
 cmark_get_exam_output(int x)
