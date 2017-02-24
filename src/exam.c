@@ -531,6 +531,11 @@ cmark_write_exam_output(FILE* out)
 	    if (set->outsUsed[j] == 1) 
 		set->cleanOutputs[cnt++] = getCleanBuffer(set->outputs[j]);
 	}
+	if (cnt == 0) {
+	    fprintf(stderr, "No lines in solution block(s)\n");
+	    mismatch++;
+	    break;
+	}
 	// ok, now we have cnt strings in cleanOutputs.  Lets make sure all have same count
 	int ansCount = cntLines(set->cleanOutputs[0]);
 	for (int k=0; k<cnt; k++) {
