@@ -13,7 +13,8 @@ extern "C" {
 #define Q_LEFT 2
 #define Q_RIGHT 3
 #define Q_TEXT 4
-#define Q_MAXWIDGET 4
+#define Q_NUMBER 5
+#define Q_MAXWIDGET 5		/* if you add a new qtype, make sure to reset maxwidget */
 
 typedef struct {
   int len;
