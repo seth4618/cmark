@@ -231,12 +231,10 @@ int main(int argc, char *argv[])
 	  {
 	    while(i<argc)
 	      {
-		if(can_include(argv[i]))
-		  {
+		if(can_include(argv[i])) {
 		    includes[numincludes++] = i;
-		  }
-		else
-		  {
+		  } else {
+		  fprintf(stderr, "Cannot include '%s'\n", argv[i]);
 		    if(i==start)
 		      {
 			fprintf(stderr,"--includes requires at least one file \n");
