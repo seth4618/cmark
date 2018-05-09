@@ -6,6 +6,8 @@
 #include "houdini.h"
 #include "exam.h"
 
+extern int cmark_verbose;
+
 // search up to find the first parent which is an exam node
 cmark_node*
 get_enclosing_exam(cmark_node* node)
@@ -72,7 +74,7 @@ static cmark_strbuf** examOutputs = NULL;
 static int* examOutUsed = NULL;
 static int useExamOutput = 0;
 
-const char* qs[] = { "radio", "check", "matchleft", "matchright", "text" };
+const char* qs[] = { "radio", "check", "matchleft", "matchright", "text", "number" };
 static int uniqID = 0;
 
 Qtype* qtypes = NULL;
@@ -309,11 +311,24 @@ format_blank_input(cmark_strbuf *html, cmark_node* node, int groupnum, int ansnu
 {
     char* istr = (char*)node->user_data;
     int width = 10;
-    if (strlen(istr) > 0) {
-	width = atoi(istr);
-	if ((width < 1)||(width > 40)) {
-	    fprintf(stderr, "Illegal width [%s]\n", istr);
-	    exit(-1);
+    node->as.examquestion.type = Q_TEXT;
+    while (strlen(istr) > 0) {
+	// this is a number which specifies a width, or a 'number' or 'range'
+	if (strcmp(istr, "number") == 0) {
+	    node->as.examquestion.type = Q_NUMBER;
+	    istr += 6;
+	    if (*istr == ':') istr++;
+	} else if (strcmp(istr, "range") == 0) {
+	    node->as.examquestion.type = Q_NUMBER;
+	    istr += 5;
+	    if (*istr == ':') istr++;
+	} else {
+	    width = atoi(istr);
+	    if ((width < 1)||(width > 40)) {
+		fprintf(stderr, "Illegal width [%s]\n", istr);
+		exit(-1);
+	    }
+	    break;
 	}
     }
     format_text_wiget(html, width, groupnum, ansnum);
@@ -326,6 +341,7 @@ format_exam_widget(cmark_strbuf *html, cmark_node* qtype, cmark_node* node)
     int groupnum = qtype->as.examquestion.group;
     int ansnum = qtype->as.examquestion.ansnum++;
     int type = qtype->as.examquestion.type;
+    if (cmark_verbose) fprintf(stderr, "few: %s: g:%d, a:%d, t:%d\n", cmark_node_get_type_string(node), groupnum, ansnum, type);
 
     switch (type) {
     case Q_RADIO: {
@@ -376,6 +392,23 @@ outQinfo(cmark_strbuf* solutionBuffer, const char* string)
     numberOfFillIns++;
 }
 
+static int
+getBlanktype(cmark_node* node)
+{
+    char* istr = (char*)node->user_data;
+    if (strlen(istr) > 0) {
+	// this is a number which specifies a width, or a 'number' or 'range'
+	if (strcmp(istr, "number") == 0) {
+	    return Q_NUMBER;
+	} else if (strcmp(istr, "range") == 0) {
+	    return Q_NUMBER;
+	} else {
+	    return Q_TEXT;
+	}
+    }
+    return Q_TEXT;
+}
+
 // enable exam output, as well as describe the types of each question
 void
 create_exam_output_buffer(cmark_node* root)
@@ -391,6 +424,9 @@ create_exam_output_buffer(cmark_node* root)
     while ((ev_type = cmark_iter_next(iter)) != CMARK_EVENT_DONE) {
 	cmark_node* cur = cmark_iter_get_node(iter);
 	bool entering = (ev_type == CMARK_EVENT_ENTER);
+	if (cmark_verbose && entering) 
+	    fprintf(stderr, "%d.%d:%s\n", 
+		    cur->start_line, cur->start_column, cmark_node_get_type_string(cur));
 	switch (cur->type) {
 	case CMARK_NODE_EXAM:
 	    if (entering) {
@@ -422,7 +458,20 @@ create_exam_output_buffer(cmark_node* root)
 		if ((group != NULL)&&(grouptype != Q_TEXT)) {
 		    warning(cur, "blank inside a different kind of exam set?");
 		}
-		outQinfo(solutionBuffer, "text");
+		// determine whether text/numeric/range
+		switch (getBlanktype(cur)) {
+		case Q_NUMBER:
+		    outQinfo(solutionBuffer, "number");
+		    break;
+		case Q_TEXT:
+		    outQinfo(solutionBuffer, "text");
+		    break;
+		default:
+		    fprintf(stderr, "Bad type: %d\n", cur->as.examquestion.type);
+		    outQinfo(solutionBuffer, "text");
+		    break;
+		    assert(0);
+		}
 	    }
 	    break;
 
