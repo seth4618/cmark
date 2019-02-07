@@ -15,7 +15,7 @@
 
 extern int cmark_verbose;
 
-void failed2match(const char* text, const char* reason);
+void failed2match(int line, const char* text, const char* reason);
 
 static cmark_node* 
 find_closest_node_with_line_info(cmark_node* node)
@@ -952,7 +952,7 @@ handle_close_curly_brace(subject* subj,cmark_node* parent)
 	    // look at rest of text
 	    if (remaining[0] != ':') {
 		// fatal error
-		failed2match("':' after question", (const char*)remaining);
+		failed2match(inl->start_line, "':' after question", (const char*)remaining);
 	    }
 	    level = remaining[1]-'0';
 	}
@@ -972,7 +972,7 @@ handle_close_curly_brace(subject* subj,cmark_node* parent)
 	    // there is some other stuff there
 	    if (remaining[0] != ':') {
 		// fatal error
-		failed2match("':' after answer", (const char*)remaining);
+		failed2match(find_closest_line(inl), "':' after answer", (const char*)remaining);
 	    }
 	    inl->user_data = (char *)calloc(1, rlen);
 	    strncpy(inl->user_data, (const char*)remaining+1, rlen-1);
@@ -995,7 +995,7 @@ handle_close_curly_brace(subject* subj,cmark_node* parent)
 	    // there is some other stuff there
 	    if (remaining[0] != ':') {
 		// fatal error
-		failed2match("':' after blank", (const char*)remaining);
+		failed2match(find_closest_line(inl), "':' after blank", (const char*)remaining);
 	    }
 	    inl->user_data = (char *)calloc(1, rlen);
 	    strncpy(inl->user_data, (const char*)remaining+1, rlen-1);
